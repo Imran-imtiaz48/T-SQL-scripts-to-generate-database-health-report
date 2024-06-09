@@ -54,6 +54,7 @@ Key Fields
 •	Next Run Date: Date and time when the job is scheduled to run next.
 •	Last Run Date: Date and time when the job was last run.
 •	Status: Current status of the job (e.g., succeeded, failed, in progress).
+
 Summary
 This script provides a comprehensive overview of the health and status of a SQL Server instance. By collecting data on database configurations, server properties, disk usage, backups, and job statuses, it helps administrators ensure the SQL Server environment is running efficiently and effectively.
 
