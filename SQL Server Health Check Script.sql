@@ -154,3 +154,25 @@ WHERE sysjobhist.step_id = 0
 
 	select * FROM #JobInformation
 
+
+	--Monitor and Optimize your SQL database server:
+	SELECT 
+    -- Server version
+    @@VERSION AS ServerVersion,
+    -- List of databases
+    GROUP_CONCAT(schema_name SEPARATOR ', ') AS Databases,
+    -- Total size of each database
+    GROUP_CONCAT(CONCAT(schema_name, ': ', ROUND(SUM((data_length + index_length) / 1024 / 1024), 2), ' MB') SEPARATOR ', ') AS DatabaseSizes,
+    -- Total server memory usage
+    (SELECT ROUND((cntr_value/1024), 2) FROM sys.dm_os_performance_counters WHERE counter_name = 'Total Server Memory (KB)') AS TotalServerMemory_MB,
+    -- Target server memory
+    (SELECT ROUND((cntr_value/1024), 2) FROM sys.dm_os_performance_counters WHERE counter_name = 'Target Server Memory (KB)') AS TargetServerMemory_MB,
+    -- CPU usage
+    (SELECT cntr_value FROM sys.dm_os_performance_counters WHERE counter_name = 'Processor Time' AND object_name = 'Processor' AND instance_name = '_Total') AS CPU_Usage_Percentage,
+    -- List of long-running queries
+    (SELECT GROUP_CONCAT(CONCAT(t1.session_id, ': ', t2.text) SEPARATOR '; ') 
+     FROM sys.dm_exec_requests t1 CROSS APPLY sys.dm_exec_sql_text(t1.sql_handle) AS t2 
+     WHERE t1.status = 'running') AS LongRunningQueries,
+    -- List of blocked processes
+    (SELECT GROUP_CONCAT(CONCAT(t1.request_session_id, ' (Blocked by: ', t1.blocking_session_id, ')') SEPARATOR '; ') 
+     FROM sys.dm_exec_requests t1 WHERE t1.blocking_session_id > 0) AS BlockedProcesses
