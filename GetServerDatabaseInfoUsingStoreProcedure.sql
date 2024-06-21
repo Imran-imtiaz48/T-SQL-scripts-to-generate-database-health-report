@@ -217,7 +217,7 @@ BEGIN
         (SELECT STRING_AGG(CONCAT(t1.request_session_id, ' (Blocked by: ', t1.blocking_session_id, ')'), '; ') 
          FROM sys.dm_exec_requests t1 WHERE t1.blocking_session_id > 0) AS BlockedProcesses;
 
-    -- Additional Monitoring and Optimization Queries
+    
     -- CPU and Memory Utilization
     SELECT 
         record_id, 
