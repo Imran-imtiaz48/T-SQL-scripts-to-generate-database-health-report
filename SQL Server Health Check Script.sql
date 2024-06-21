@@ -177,7 +177,7 @@ WHERE sysjobhist.step_id = 0
     (SELECT GROUP_CONCAT(CONCAT(t1.request_session_id, ' (Blocked by: ', t1.blocking_session_id, ')') SEPARATOR '; ') 
      FROM sys.dm_exec_requests t1 WHERE t1.blocking_session_id > 0) AS BlockedProcesses
 
-	 -- Existing code
+	
 
 -- CPU and Memory Utilization
 SELECT 
