@@ -1,84 +1,63 @@
-GetServerDatabaseInfo Stored Procedure
-Overview
-The GetServerDatabaseInfo stored procedure is designed to provide comprehensive information about the SQL Server instance, including details about databases, server and instance status, disk usage, database backup information, SQL job statuses, and server performance metrics. This procedure is useful for database administrators to monitor, audit, and optimize their SQL Server environment.
-Features
-•	Database Information: Retrieves information about all databases including their size, creation date, owner, state, user access level, compatibility level, and recovery model.
-•	Server and Instance Status: Provides details about the server name, version, edition, whether it is clustered, and its user mode.
-•	Disk Status: Shows the logical volume name, drive, free space, total space, and occupied space.
-•	Database Backup Information: Lists the latest backup information for each database, including backup type, start and finish dates, username, and backup size.
-•	SQL Jobs Status: Displays the status of SQL jobs, including their name, category, owner, enabled status, next scheduled run date, last run date, and current status.
-•	Server Performance Metrics: Offers insights into server performance, including server version, list of databases, total and target server memory, CPU usage, long-running queries, and blocked processes.
-Usage
-To execute the stored procedure, use the following SQL command:
-sql
-Copy code
-EXEC GetServerDatabaseInfo;
-Detailed Output
-1. Database Information
-•	database_id: The unique identifier for each database.
-•	name: The name of the database.
-•	create_date: The date when the database was created.
-•	owner_name: The name of the owner of the database.
-•	user_access_desc: Describes the user access level.
-•	state_desc: The current state of the database.
-•	compatibility_level: The compatibility level of the database.
-•	recovery_model_desc: The recovery model of the database.
-•	DBSizeInMB: The size of the database in megabytes.
-2. Server and Instance Status
-•	Hostname: The name of the server.
-•	Version: The SQL Server version.
-•	Edition: The edition of SQL Server.
-•	IsClusteredInstance: Indicates if the server is part of a cluster.
-•	IsInstanceinSingleUserMode: Indicates if the server is in single user mode.
-3. Disk Status
-•	LogicalName: The logical name of the volume.
-•	Drive: The drive letter or mount point.
-•	FreeSpace: Free space on the volume in gigabytes.
-•	TotalSpace: Total space on the volume in gigabytes.
-•	OccupiedSpace: Occupied space on the volume in gigabytes.
-4. Database Backup Information
-•	DatabaseName: The name of the database.
-•	BackupType: The type of backup (Full, Differential, Log, etc.).
-•	BackupStartDate: The start date and time of the backup.
-•	BackupFinishDate: The finish date and time of the backup.
-•	Username: The name of the user who performed the backup.
-•	BackupSize: The size of the backup in megabytes.
-•	BackupUser: The user who took the backup.
-5. SQL Jobs Status
-•	Servername: The name of the server.
-•	Categoryname: The category of the job.
-•	JobName: The name of the SQL job.
-•	OwnerID: The owner of the job.
-•	Enabled: Indicates if the job is enabled.
-•	NextRunDate: The next scheduled run date and time of the job.
-•	LastRunDate: The last run date and time of the job.
-•	Status: The current status of the job.
-6. Server Performance Metrics
-•	ServerVersion: The version of the SQL Server.
-•	Databases: List of databases on the server.
-•	DatabaseSizes: Total size of each database.
-•	TotalServerMemory_MB: Total server memory usage in megabytes.
-•	TargetServerMemory_MB: Target server memory in megabytes.
-•	CPU_Usage_Percentage: CPU usage percentage.
-•	LongRunningQueries: List of long-running queries.
-•	BlockedProcesses: List of blocked processes.
-Dependencies
-This stored procedure relies on various system views and functions provided by SQL Server, including:
-•	sys.databases
-•	sys.server_principals
-•	sys.master_files
-•	sys.dm_os_volume_stats
-•	msdb.dbo.backupset
-•	msdb.dbo.sysjobs
-•	msdb.dbo.sysjobschedules
-•	msdb.dbo.sysschedules
-•	msdb.dbo.syscategories
-•	msdb.dbo.sysjobhistory
-•	sys.dm_exec_requests
-•	sys.dm_exec_sql_text
-•	sys.dm_os_performance_counters
-Author
-This stored procedure was created to assist SQL Server administrators in monitoring and managing their database environments effectively.
+# SQL Server Monitoring and Optimization Queries
 
-This README provides a detailed explanation of the stored procedure's purpose, usage, and output, making it easier for users to understand and utilize the procedure effectively.
+This document provides an overview of various queries designed to monitor and optimize your SQL Server environment. The queries cover aspects such as database information, server status, disk status, backup information, SQL job status, and additional performance metrics.
 
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Database Information](#database-information)
+3. [Server and Instance Status](#server-and-instance-status)
+4. [Disk Status](#disk-status)
+5. [Database Backup Information](#database-backup-information)
+6. [SQL Job Status](#sql-job-status)
+7. [Monitoring and Optimization](#monitoring-and-optimization)
+8. [Additional Queries](#additional-queries)
+9. [Troubleshooting](#troubleshooting)
+
+## Prerequisites
+
+- SQL Server 2012 or later
+- Appropriate permissions to access system views and execute stored procedures
+
+## Database Information
+
+This query retrieves detailed information about databases on the server, including their size, state, and owner. It helps in understanding the current status and configuration of each database, which is crucial for maintenance and optimization tasks.
+
+## Server and Instance Status
+
+This section provides server and instance status details including the hostname, SQL Server version, edition, and instance configuration. It helps in identifying the basic setup and configuration of the SQL Server instance, which is essential for troubleshooting and performance tuning.
+
+## Disk Status
+
+This query provides details about the disk status, including free space, total space, and occupied space for each volume. Monitoring disk space is critical to prevent space-related issues that can affect the performance and availability of the databases.
+
+## Database Backup Information
+
+This section creates a temporary table to store backup information and retrieves details about the latest backups for each database. Regular backups are essential for data recovery and protection, and this query helps in tracking the backup status and ensuring compliance with backup policies.
+
+## SQL Job Status
+
+This section creates a temporary table to store SQL job information and retrieves details about the status of SQL jobs. Monitoring SQL jobs is crucial for ensuring that scheduled tasks are running as expected, and this query provides insights into job execution status, next scheduled runs, and any failures.
+
+## Monitoring and Optimization
+
+This query provides a comprehensive view of the server version, list of databases, memory usage, CPU usage, long-running queries, and blocked processes. It helps in identifying performance bottlenecks and areas for optimization, ensuring the smooth operation of the SQL Server instance.
+
+## Additional Queries
+
+1. **CPU and Memory Utilization**: Monitors CPU and memory usage over time to identify trends and potential issues.
+2. **I/O Statistics**: Provides details on I/O performance for each database, helping to identify slow-performing disks or bottlenecks.
+3. **Wait Statistics**: Retrieves wait statistics to understand where the SQL Server is spending time waiting, which can help in performance tuning.
+4. **Error Logs**: Reads the SQL Server error logs to identify any critical errors or warnings.
+5. **Index Fragmentation**: Checks the fragmentation level of indexes to ensure efficient data retrieval and storage.
+6. **Query Store Information**: Provides insights into query performance, including execution counts and resource usage.
+7. **Blocking and Deadlocks**: Identifies blocked processes and deadlocks, which can cause performance issues.
+8. **Security and Permission Audits**: Audits security and permissions to ensure compliance and identify potential security risks.
+
+## Troubleshooting
+
+For troubleshooting, refer to the error logs and wait statistics to identify any critical issues. Regularly monitor the disk status, backup information, and SQL job status to preemptively address potential problems. Utilize the additional queries to gain deeper insights into performance and security aspects.
+
+## Conclusion
+
+These queries provide a comprehensive toolkit for monitoring and optimizing your SQL Server environment. Regular use of these queries will help in maintaining the health, performance, and security of your SQL Server instances.
