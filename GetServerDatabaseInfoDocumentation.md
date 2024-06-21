@@ -79,6 +79,6 @@ This stored procedure relies on various system views and functions provided by S
 •	sys.dm_os_performance_counters
 Author
 This stored procedure was created to assist SQL Server administrators in monitoring and managing their database environments effectively.
-________________________________________
+
 This README provides a detailed explanation of the stored procedure's purpose, usage, and output, making it easier for users to understand and utilize the procedure effectively.
 

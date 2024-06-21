@@ -176,3 +176,105 @@ WHERE sysjobhist.step_id = 0
     -- List of blocked processes
     (SELECT GROUP_CONCAT(CONCAT(t1.request_session_id, ' (Blocked by: ', t1.blocking_session_id, ')') SEPARATOR '; ') 
      FROM sys.dm_exec_requests t1 WHERE t1.blocking_session_id > 0) AS BlockedProcesses
+
+	 -- Existing code
+
+-- CPU and Memory Utilization
+SELECT 
+    record_id, 
+    event_time, 
+    SQLProcessUtilization, 
+    SystemIdle, 
+    100 - SystemIdle - SQLProcessUtilization AS OtherProcessUtilization 
+FROM 
+    sys.dm_os_ring_buffers 
+WHERE 
+    ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' 
+    AND record_id = (SELECT MAX(record_id) FROM sys.dm_os_ring_buffers 
+                     WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR');
+
+-- I/O Statistics
+SELECT 
+    db_name(database_id) AS DatabaseName,
+    file_id,
+    io_stall_read_ms,
+    num_of_reads,
+    io_stall_write_ms,
+    num_of_writes,
+    io_stall_read_ms / num_of_reads AS avg_read_stall_ms,
+    io_stall_write_ms / num_of_writes AS avg_write_stall_ms
+FROM 
+    sys.dm_io_virtual_file_stats(null, null);
+
+-- Wait Statistics
+SELECT 
+    wait_type, 
+    waiting_tasks_count, 
+    wait_time_ms, 
+    max_wait_time_ms, 
+    signal_wait_time_ms 
+FROM 
+    sys.dm_os_wait_stats 
+ORDER BY 
+    wait_time_ms DESC;
+
+-- Error Logs
+EXEC sp_readerrorlog;
+
+-- Index Fragmentation
+SELECT 
+    dbschemas.[name] AS 'Schema', 
+    dbtables.[name] AS 'Table', 
+    dbindexes.[name] AS 'Index', 
+    indexstats.avg_fragmentation_in_percent 
+FROM 
+    sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, 'LIMITED') AS indexstats 
+    INNER JOIN sys.tables dbtables ON indexstats.[object_id] = dbtables.[object_id] 
+    INNER JOIN sys.schemas dbschemas ON dbtables.[schema_id] = dbschemas.[schema_id] 
+    INNER JOIN sys.indexes AS dbindexes ON indexstats.[object_id] = dbindexes.[object_id] 
+    AND indexstats.index_id = dbindexes.index_id 
+ORDER BY 
+    indexstats.avg_fragmentation_in_percent DESC;
+
+-- Query Store Information
+SELECT 
+    TOP 10 query_text, 
+    plan_id, 
+    execution_count, 
+    total_cpu_time_ms, 
+    total_duration_ms, 
+    total_logical_reads, 
+    total_logical_writes 
+FROM 
+    sys.query_store_query_text AS qt 
+    JOIN sys.query_store_query AS q ON qt.query_text_id = q.query_text_id 
+    JOIN sys.query_store_plan AS p ON q.query_id = p.query_id 
+ORDER BY 
+    total_cpu_time_ms DESC;
+
+-- Blocking and Deadlocks
+SELECT 
+    blocking_session_id, 
+    session_id, 
+    wait_type, 
+    wait_duration_ms, 
+    wait_resource 
+FROM 
+    sys.dm_exec_requests 
+WHERE 
+    blocking_session_id <> 0;
+
+-- Security and Permission Audits
+SELECT 
+    pr.principal_id, 
+    pr.name AS principal_name, 
+    pr.type_desc AS principal_type_desc, 
+    pe.state_desc AS permission_state_desc, 
+    pe.permission_name 
+FROM 
+    sys.database_principals AS pr 
+    JOIN sys.database_permissions AS pe ON pr.principal_id = pe.grantee_principal_id 
+ORDER BY 
+    pr.name;
+
+
