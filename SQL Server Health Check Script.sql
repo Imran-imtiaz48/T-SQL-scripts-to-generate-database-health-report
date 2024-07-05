@@ -14,7 +14,7 @@ declare @IsClusteredInstance varchar(50) =
 declare @IsInstanceinSingleUserMode varchar(50) = 
     (SELECT CASE SERVERPROPERTY ('IsSingleUser') WHEN 1 THEN 'Single user' WHEN 0 THEN 'Multi user' ELSE 'null' END);
 
--- Output the Values
+-- Output the Value
 SELECT 
     @Hostname AS Hostname,
     @Version AS Version,
@@ -31,7 +31,7 @@ SELECT DISTINCT volumes.logical_volume_name AS LogicalName,
 FROM sys.master_files mf
 CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.FILE_ID) volumes
 
---Database backup information
+--Database backup info
 create table #BackupInformation 
 (DatabaseName varchar(200), backup_type varchar(50), backupstartdate datetime, backupfinishdate datetime, username varchar(200), backupsize numeric(10,2), BackupUser varchar(250)) 
 ;with backup_information as
@@ -179,7 +179,7 @@ WHERE sysjobhist.step_id = 0
 
 	
 
--- CPU and Memory Utilization
+-- CPU and Memory Utilizations
 SELECT 
     record_id, 
     event_time, 
@@ -221,7 +221,7 @@ ORDER BY
 -- Error Logs
 EXEC sp_readerrorlog;
 
--- Index Fragmentation
+-- Index Fragmentations
 SELECT 
     dbschemas.[name] AS 'Schema', 
     dbtables.[name] AS 'Table', 
@@ -236,7 +236,7 @@ FROM
 ORDER BY 
     indexstats.avg_fragmentation_in_percent DESC;
 
--- Query Store Information
+-- Query Store Informations
 SELECT 
     TOP 10 query_text, 
     plan_id, 
