@@ -4,7 +4,7 @@ from sys.databases a inner join sys.server_principals b on a.owner_sid=b.sid inn
 Where a.database_id>5
 Group by a.name,a.create_date,b.name,a.user_access_desc,compatibility_level,a.state_desc, recovery_model_desc,a.database_id
 
---Server and Instance status
+--Server and Instance Status
 declare @DatabaseServerInformation nvarchar(max);
 declare @Hostname varchar(50) = (select convert(varchar(50),@@SERVERNAME));
 declare @Version varchar(max) = (select convert(varchar(max),@@version));
@@ -14,7 +14,7 @@ declare @IsClusteredInstance varchar(50) =
 declare @IsInstanceinSingleUserMode varchar(50) = 
     (SELECT CASE SERVERPROPERTY ('IsSingleUser') WHEN 1 THEN 'Single user' WHEN 0 THEN 'Multi user' ELSE 'null' END);
 
--- Output the values
+-- Output the Values
 SELECT 
     @Hostname AS Hostname,
     @Version AS Version,
@@ -155,7 +155,7 @@ WHERE sysjobhist.step_id = 0
 	select * FROM #JobInformation
 
 
-	--Monitor and Optimize your SQL database server:
+	--Monitor and Optimize your SQL database server
 	SELECT 
     -- Server version
     @@VERSION AS ServerVersion,
