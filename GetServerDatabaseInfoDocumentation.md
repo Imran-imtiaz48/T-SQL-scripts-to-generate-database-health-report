@@ -56,7 +56,7 @@ This query provides a comprehensive view of the server version, list of database
 
 ## Troubleshooting
 
-For troubleshooting, refer to the error logs and wait statistics to identify any critical issues. Regularly monitor the disk status, backup information, and SQL job status to preemptively address potential problems. Utilize the additional queries to gain deeper insights into performance and security aspects.
+When troubleshooting, consult error logs and wait statistics to pinpoint critical issues. Monitor disk status, backup details, and SQL job status regularly to proactively manage potential problems. Use supplementary queries to delve into performance and security for deeper insights.
 
 ## Conclusion
 
