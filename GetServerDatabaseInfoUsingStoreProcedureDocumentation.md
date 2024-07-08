@@ -1,6 +1,6 @@
 # GetServerDatabaseInfo Stored Procedure
 
-The `GetServerDatabaseInfo` stored procedure provides comprehensive insights into your SQL Server instance and its databases. This procedure consolidates information about database status, server status, disk usage, backup details, job statuses, and various performance metrics. It's designed to help database administrators monitor and optimize their SQL Server environments effectively.
+The `GetServerDatabaseInfo` stored procedure delivers detailed insights into your SQL Server instance and its databases. This procedure consolidates critical information, including database status, server status, disk usage, backup details, job statuses, and various performance metrics. It is an essential tool for database administrators to effectively monitor and optimize their SQL Server environments.
 
 ## Table of Contents
 
@@ -14,18 +14,18 @@ The `GetServerDatabaseInfo` stored procedure provides comprehensive insights int
 ## Prerequisites
 
 - SQL Server 2012 or later
-- Appropriate permissions to access system views and execute stored procedures
+- Sufficient permissions to access system views and execute stored procedures
 
 ## Installation
 
 1. Open SQL Server Management Studio (SSMS).
-2. Connect to the SQL Server instance where you want to deploy the stored procedure.
+2. Connect to the SQL Server instance where the stored procedure will be deployed.
 3. Open a new query window.
-4. Copy and paste the content of the `GetServerDatabaseInfo` stored procedure script into the query window.
+4. Copy and paste the `GetServerDatabaseInfo` stored procedure script into the query window.
 5. Execute the script to create the stored procedure.
 
 ```sql
--- Paste the GetServerDatabaseInfo stored procedure script here
+-- Insert the GetServerDatabaseInfo stored procedure script here
 ```
 
 ## Usage
@@ -36,7 +36,7 @@ To execute the stored procedure, use the following command:
 EXEC GetServerDatabaseInfo;
 ```
 
-This will run the procedure and output various details about your SQL Server instance and databases.
+This command will execute the procedure and provide comprehensive details about your SQL Server instance and databases.
 
 ## Output Details
 
@@ -106,21 +106,21 @@ This will run the procedure and output various details about your SQL Server ins
 
 ## Additional Information
 
-- **CPU and Memory Utilization**: Provides details about CPU and memory usage.
-- **I/O Statistics**: Gives insights into read and write operations and their latencies.
-- **Wait Statistics**: Displays various wait types and their durations.
-- **Error Logs**: Shows recent error logs from the SQL Server.
-- **Index Fragmentation**: Lists fragmented indexes and their fragmentation percentages.
-- **Query Store Information**: Provides details about the most resource-intensive queries.
-- **Blocking and Deadlocks**: Identifies blocking sessions and deadlocks.
-- **Security and Permission Audits**: Lists permissions for various database principals.
+- **CPU and Memory Utilization**: Details about CPU and memory usage.
+- **I/O Statistics**: Insights into read and write operations and their latencies.
+- **Wait Statistics**: Various wait types and their durations.
+- **Error Logs**: Recent error logs from the SQL Server.
+- **Index Fragmentation**: Fragmented indexes and their fragmentation percentages.
+- **Query Store Information**: Details about the most resource-intensive queries.
+- **Blocking and Deadlocks**: Blocking sessions and deadlocks.
+- **Security and Permission Audits**: Permissions for various database principals.
 
 ## Troubleshooting
 
 - Ensure you have the necessary permissions to access system views and execute the stored procedure.
-- If you encounter any errors, review the error messages for specific issues related to permissions or missing objects.
+- Review error messages for specific issues related to permissions or missing objects if you encounter errors.
 - For large databases or instances with many jobs, the procedure might take some time to execute. Consider running it during off-peak hours.
 
 ---
 
-This README provides an overview of the `GetServerDatabaseInfo` stored procedure, including its installation, usage, and the details it outputs. It serves as a guide for database administrators to effectively monitor and optimize their SQL Server environments.
+This documentation provides an overview of the `GetServerDatabaseInfo` stored procedure, covering its installation, usage, and the details it outputs. It serves as a guide for database administrators to effectively monitor and optimize their SQL Server environments.
