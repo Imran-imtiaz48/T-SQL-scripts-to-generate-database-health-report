@@ -252,7 +252,7 @@ FROM
 ORDER BY 
     total_cpu_time_ms DESC;
 
--- Blocking and Deadlocks
+-- Blocking and Deadlock
 SELECT 
     blocking_session_id, 
     session_id, 
@@ -264,7 +264,7 @@ FROM
 WHERE 
     blocking_session_id <> 0;
 
--- Security and Permission Audits
+-- Security and Permission Audit
 SELECT 
     pr.principal_id, 
     pr.name AS principal_name, 
