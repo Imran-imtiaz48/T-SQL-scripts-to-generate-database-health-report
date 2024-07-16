@@ -1,7 +1,7 @@
 CREATE PROCEDURE GetServerDatabaseInfo
 AS
 BEGIN
-    -- Step 1: Database information
+    -- Step 1: Database Information
     SELECT  
         a.database_id,
         a.name,
@@ -12,12 +12,10 @@ BEGIN
         a.compatibility_level,
         a.recovery_model_desc,
         SUM((c.size * 8) / 1024) AS DBSizeInMB
-    FROM 
-        sys.databases a 
-        INNER JOIN sys.server_principals b ON a.owner_sid = b.sid 
-        INNER JOIN sys.master_files c ON a.database_id = c.database_id
-    WHERE 
-        a.database_id > 5
+    FROM sys.databases a 
+    INNER JOIN sys.server_principals b ON a.owner_sid = b.sid 
+    INNER JOIN sys.master_files c ON a.database_id = c.database_id
+    WHERE a.database_id > 5
     GROUP BY 
         a.name,
         a.create_date,
@@ -28,17 +26,16 @@ BEGIN
         a.recovery_model_desc,
         a.database_id;
 
-    -- Step 2: Server and Instance status
-    DECLARE @DatabaseServerInformation NVARCHAR(MAX);
-    DECLARE @Hostname VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), @@SERVERNAME));
-    DECLARE @Version VARCHAR(MAX) = (SELECT CONVERT(VARCHAR(MAX), @@version));
-    DECLARE @Edition VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), SERVERPROPERTY('edition')));
-    DECLARE @IsClusteredInstance VARCHAR(50) = 
-        (SELECT CASE SERVERPROPERTY('IsClustered') WHEN 1 THEN 'Clustered Instance' WHEN 0 THEN 'Non Clustered instance' ELSE 'null' END);
-    DECLARE @IsInstanceinSingleUserMode VARCHAR(50) = 
-        (SELECT CASE SERVERPROPERTY('IsSingleUser') WHEN 1 THEN 'Single user' WHEN 0 THEN 'Multi user' ELSE 'null' END);
+    -- Step 2: Server and Instance Status
+    DECLARE 
+        @Hostname VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), @@SERVERNAME)),
+        @Version VARCHAR(MAX) = (SELECT CONVERT(VARCHAR(MAX), @@version)),
+        @Edition VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), SERVERPROPERTY('edition'))),
+        @IsClusteredInstance VARCHAR(50) = 
+            (SELECT CASE SERVERPROPERTY('IsClustered') WHEN 1 THEN 'Clustered Instance' ELSE 'Non Clustered instance' END),
+        @IsInstanceinSingleUserMode VARCHAR(50) = 
+            (SELECT CASE SERVERPROPERTY('IsSingleUser') WHEN 1 THEN 'Single user' ELSE 'Multi user' END);
 
-    -- Output the values
     SELECT 
         @Hostname AS Hostname,
         @Version AS Version,
@@ -53,11 +50,10 @@ BEGIN
         CONVERT(INT, volumes.available_bytes / 1024 / 1024 / 1024) AS FreeSpace,
         CONVERT(INT, volumes.total_bytes / 1024 / 1024 / 1024) AS TotalSpace,
         CONVERT(INT, volumes.total_bytes / 1024 / 1024 / 1024) - CONVERT(INT, volumes.available_bytes / 1024 / 1024 / 1024) AS OccupiedSpace
-    FROM 
-        sys.master_files mf
-        CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.FILE_ID) volumes;
+    FROM sys.master_files mf
+    CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.FILE_ID) volumes;
 
-    -- Step 4: Database backup information
+    -- Step 4: Database Backup Information
     CREATE TABLE #BackupInformation 
     (
         DatabaseName VARCHAR(200), 
@@ -73,21 +69,19 @@ BEGIN
     (
         SELECT
             database_name,
-            backup_type =
-                CASE type
-                    WHEN 'D' THEN 'Full backup'
-                    WHEN 'I' THEN 'Differential backup'
-                    WHEN 'L' THEN 'Log backup'
-                    ELSE 'Other or copy only backup'
-                END,
+            backup_type = CASE type
+                WHEN 'D' THEN 'Full backup'
+                WHEN 'I' THEN 'Differential backup'
+                WHEN 'L' THEN 'Log backup'
+                ELSE 'Other or copy only backup'
+            END,
             backup_start_date,
             backup_finish_date,
             user_name,
             server_name,
             compressed_backup_size,
             ROW_NUMBER() OVER (PARTITION BY database_name, type ORDER BY backup_finish_date DESC) AS rownum
-        FROM 
-            msdb.dbo.backupset
+        FROM msdb.dbo.backupset
     )
     INSERT INTO #BackupInformation
     SELECT
@@ -98,17 +92,14 @@ BEGIN
         server_name AS ServerName,
         CONVERT(VARCHAR, CONVERT(NUMERIC(10, 2), compressed_backup_size / 1024 / 1024)) AS BackupSizeInMB,
         user_name AS BackupTakenBy
-    FROM 
-        backup_information
-    WHERE 
-        rownum = 1
-    ORDER BY 
-        database_name;
+    FROM backup_information
+    WHERE rownum = 1
+    ORDER BY database_name;
 
     SELECT * FROM #BackupInformation;
     DROP TABLE #BackupInformation;
 
-    -- Step 5: Status of the SQL Jobs
+    -- Step 5: SQL Job Status
     CREATE TABLE #JobInformation
     (
         Servername VARCHAR(100), 
@@ -145,79 +136,54 @@ BEGIN
         END AS NextScheduledRunDate,
         lastrunjobhistory.LastRunDate,
         ISNULL(lastrunjobhistory.run_status_desc, 'Unknown') AS run_status_desc
-    FROM 
-        msdb.dbo.sysjobs AS sqljobs
-        LEFT JOIN msdb.dbo.sysjobschedules AS job_schedule ON sqljobs.job_id = job_schedule.job_id
-        LEFT JOIN msdb.dbo.sysschedules AS schedule ON job_schedule.schedule_id = schedule.schedule_id
-        INNER JOIN msdb.dbo.syscategories categories ON sqljobs.category_id = categories.category_id
-        LEFT OUTER JOIN 
-        (
-            SELECT Jobhistory.job_id
-            FROM msdb.dbo.sysjobhistory AS Jobhistory
-            WHERE Jobhistory.step_id = 0
-            GROUP BY Jobhistory.job_id
-        ) AS jobhistory ON jobhistory.job_id = sqljobs.job_id
-        LEFT OUTER JOIN
-        (
-            SELECT 
-                sysjobhist.job_id,
-                CASE sysjobhist.run_date
-                    WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
-                    ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
-                    + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
-                END AS LastRunDate,
-                sysjobhist.run_status,
-                CASE sysjobhist.run_status
-                    WHEN 0 THEN 'Failed'
-                    WHEN 1 THEN 'Succeeded'
-                    WHEN 2 THEN 'Retry'
-                    WHEN 3 THEN 'Canceled'
-                    WHEN 4 THEN 'In Progress'
-                    ELSE 'Unknown'
-                END AS run_status_desc,
-                sysjobhist.retries_attempted,
-                sysjobhist.step_id,
-                sysjobhist.step_name,
-                sysjobhist.run_duration AS RunTimeInSeconds,
-                sysjobhist.message,
-                ROW_NUMBER() OVER (PARTITION BY sysjobhist.job_id ORDER BY CASE sysjobhist.run_date
-                    WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
-                    ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
-                    + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
-                END DESC) AS RowOrder
-            FROM 
-                msdb.dbo.sysjobhistory AS sysjobhist
-            WHERE 
-                sysjobhist.step_id = 0  
-        ) AS lastrunjobhistory ON lastrunjobhistory.job_id = sqljobs.job_id  
-        AND lastrunjobhistory.RowOrder = 1;
+    FROM msdb.dbo.sysjobs AS sqljobs
+    LEFT JOIN msdb.dbo.sysjobschedules AS job_schedule ON sqljobs.job_id = job_schedule.job_id
+    LEFT JOIN msdb.dbo.sysschedules AS schedule ON job_schedule.schedule_id = schedule.schedule_id
+    INNER JOIN msdb.dbo.syscategories categories ON sqljobs.category_id = categories.category_id
+    LEFT OUTER JOIN 
+    (
+        SELECT Jobhistory.job_id
+        FROM msdb.dbo.sysjobhistory AS Jobhistory
+        WHERE Jobhistory.step_id = 0
+        GROUP BY Jobhistory.job_id
+    ) AS jobhistory ON jobhistory.job_id = sqljobs.job_id
+    LEFT OUTER JOIN
+    (
+        SELECT 
+            sysjobhist.job_id,
+            CASE sysjobhist.run_date
+                WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
+                ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
+                + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
+            END AS LastRunDate,
+            sysjobhist.run_status,
+            CASE sysjobhist.run_status
+                WHEN 0 THEN 'Failed'
+                WHEN 1 THEN 'Succeeded'
+                WHEN 2 THEN 'Retry'
+                WHEN 3 THEN 'Canceled'
+                WHEN 4 THEN 'In Progress'
+                ELSE 'Unknown'
+            END AS run_status_desc,
+            sysjobhist.retries_attempted,
+            sysjobhist.step_id,
+            sysjobhist.step_name,
+            sysjobhist.run_duration AS RunTimeInSeconds,
+            sysjobhist.message,
+            ROW_NUMBER() OVER (PARTITION BY sysjobhist.job_id ORDER BY CASE sysjobhist.run_date
+                WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
+                ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
+                + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
+            END DESC) AS RowOrder
+        FROM msdb.dbo.sysjobhistory AS sysjobhist
+        WHERE sysjobhist.step_id = 0  
+    ) AS lastrunjobhistory ON lastrunjobhistory.job_id = sqljobs.job_id  
+    AND lastrunjobhistory.RowOrder = 1;
 
     SELECT * FROM #JobInformation;
     DROP TABLE #JobInformation;
 
-    -- Step 6: Monitor and Optimize your SQL database server
-    SELECT 
-        -- Server version
-        @@VERSION AS ServerVersion,
-        -- List of databases
-        STRING_AGG(schema_name, ', ') AS Databases,
-        -- Total size of each database
-        STRING_AGG(CONCAT(schema_name, ': ', ROUND(SUM((data_length + index_length) / 1024 / 1024), 2), ' MB'), ', ') AS DatabaseSizes,
-        -- Total server memory usage
-        (SELECT ROUND((cntr_value / 1024), 2) FROM sys.dm_os_performance_counters WHERE counter_name = 'Total Server Memory (KB)') AS TotalServerMemory_MB,
-        -- Target server memory
-        (SELECT ROUND((cntr_value / 1024), 2) FROM sys.dm_os_performance_counters WHERE counter_name = 'Target Server Memory (KB)') AS TargetServerMemory_MB,
-        -- CPU usage
-        (SELECT cntr_value FROM sys.dm_os_performance_counters WHERE counter_name = 'Processor Time' AND object_name = 'Processor' AND instance_name = '_Total') AS CPU_Usage_Percentage,
-        -- List of long-running queries
-        (SELECT STRING_AGG(CONCAT(t1.session_id, ': ', t2.text), '; ') 
-         FROM sys.dm_exec_requests t1 CROSS APPLY sys.dm_exec_sql_text(t1.sql_handle) AS t2 
-         WHERE t1.status = 'running') AS LongRunningQueries,
-        -- List of blocked processes
-        (SELECT STRING_AGG(CONCAT(t1.request_session_id, ' (Blocked by: ', t1.blocking_session_id, ')'), '; ') 
-         FROM sys.dm_exec_requests t1 WHERE t1.blocking_session_id > 0) AS BlockedProcesses;
-
-    
+    -- Step 6: Additional Monitoring and Optimization
     -- CPU and Memory Utilization
     SELECT 
         record_id, 
@@ -225,12 +191,10 @@ BEGIN
         SQLProcessUtilization, 
         SystemIdle, 
         100 - SystemIdle - SQLProcessUtilization AS OtherProcessUtilization 
-    FROM 
-        sys.dm_os_ring_buffers 
-    WHERE 
-        ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' 
-        AND record_id = (SELECT MAX(record_id) FROM sys.dm_os_ring_buffers 
-                         WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR');
+    FROM sys.dm_os_ring_buffers 
+    WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' 
+    AND record_id = (SELECT MAX(record_id) FROM sys.dm_os_ring_buffers 
+                     WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR');
 
     -- I/O Statistics
     SELECT 
@@ -242,8 +206,7 @@ BEGIN
         num_of_writes,
         io_stall_read_ms / num_of_reads AS avg_read_stall_ms,
         io_stall_write_ms / num_of_writes AS avg_write_stall_ms
-    FROM 
-        sys.dm_io_virtual_file_stats(null, null);
+    FROM sys.dm_io_virtual_file_stats(null, null);
 
     -- Wait Statistics
     SELECT 
@@ -252,10 +215,8 @@ BEGIN
         wait_time_ms, 
         max_wait_time_ms, 
         signal_wait_time_ms 
-    FROM 
-        sys.dm_os_wait_stats 
-    ORDER BY 
-        wait_time_ms DESC;
+    FROM sys.dm_os_wait_stats 
+    ORDER BY wait_time_ms DESC;
 
     -- Error Logs
     EXEC sp_readerrorlog;
@@ -266,14 +227,12 @@ BEGIN
         dbtables.[name] AS 'Table', 
         dbindexes.[name] AS 'Index', 
         indexstats.avg_fragmentation_in_percent 
-    FROM 
-        sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, 'LIMITED') AS indexstats 
-        INNER JOIN sys.tables dbtables ON indexstats.[object_id] = dbtables.[object_id] 
-        INNER JOIN sys.schemas dbschemas ON dbtables.[schema_id] = dbschemas.[schema_id] 
-        INNER JOIN sys.indexes AS dbindexes ON indexstats.[object_id] = dbindexes.[object_id] 
-        AND indexstats.index_id = dbindexes.index_id 
-    ORDER BY 
-        indexstats.avg_fragmentation_in_percent DESC;
+    FROM sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, 'LIMITED') AS indexstats 
+    INNER JOIN sys.tables dbtables ON indexstats.[object_id] = dbtables.[object_id] 
+    INNER JOIN sys.schemas dbschemas ON dbtables.[schema_id] = dbschemas.[schema_id] 
+    INNER JOIN sys.indexes AS dbindexes ON indexstats.[object_id] = dbindexes.[object_id] 
+    AND indexstats.index_id = dbindexes.index_id 
+    ORDER BY indexstats.avg_fragmentation_in_percent DESC;
 
     -- Query Store Information
     SELECT 
@@ -284,12 +243,10 @@ BEGIN
         total_duration_ms, 
         total_logical_reads, 
         total_logical_writes 
-    FROM 
-        sys.query_store_query_text AS qt 
-        JOIN sys.query_store_query AS q ON qt.query_text_id = q.query_text_id 
-        JOIN sys.query_store_plan AS p ON q.query_id = p.query_id 
-    ORDER BY 
-        total_cpu_time_ms DESC;
+    FROM sys.query_store_query_text AS qt 
+    JOIN sys.query_store_query AS q ON qt.query_text_id = q.query_text_id 
+    JOIN sys.query_store_plan AS p ON q.query_id = p.query_id 
+    ORDER BY total_cpu_time_ms DESC;
 
     -- Blocking and Deadlocks
     SELECT 
@@ -298,10 +255,8 @@ BEGIN
         wait_type, 
         wait_duration_ms, 
         wait_resource 
-    FROM 
-        sys.dm_exec_requests 
-    WHERE 
-        blocking_session_id <> 0;
+    FROM sys.dm_exec_requests 
+    WHERE blocking_session_id <> 0;
 
     -- Security and Permission Audits
     SELECT 
@@ -310,9 +265,7 @@ BEGIN
         pr.type_desc AS principal_type_desc, 
         pe.state_desc AS permission_state_desc, 
         pe.permission_name 
-    FROM 
-        sys.database_principals AS pr 
-        JOIN sys.database_permissions AS pe ON pr.principal_id = pe.grantee_principal_id 
-    ORDER BY 
-        pr.name;
+    FROM sys.database_principals AS pr 
+    JOIN sys.database_permissions AS pe ON pr.principal_id = pe.grantee_principal_id 
+    ORDER BY pr.name;
 END;
