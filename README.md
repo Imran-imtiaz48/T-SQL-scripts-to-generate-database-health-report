@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository provides SQL script and a stored procedure designed to monitor and optimize SQL Server performance. These tools offer insights into various aspects of SQL Server health, including database status, server metrics, backup information, job status, and more.
+This repository equips you with an SQL script and a stored procedure to keep your SQL Server running smoothly. These tools provide valuable insights into various aspects of your server's health, including database status, performance metrics, backup information, job status, and more.
 
 ## Contents
 
