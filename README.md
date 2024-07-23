@@ -2,7 +2,7 @@
 
 ## Overview
 
-This collection offers an SQL script and stored procedure to monitor your SQL Server's health, covering database status, performance, backups, jobs, and more.
+This comprehensive resource provides an SQL script and a stored procedure designed to facilitate the proactive monitoring of your SQL Server's health.  It encompasses a holistic view of database status, performance metrics, backup schedules, job execution, and other critical aspects.
 
 ## Contents
 
