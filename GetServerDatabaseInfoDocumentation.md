@@ -1,6 +1,14 @@
 # SQL Server Monitoring and Optimization Queries
 
-This document provides a comprehensive overview of queries designed to monitor and optimize your SQL Server environment. The queries address various aspects including database information, server status, disk status, backup details, SQL job status, and additional performance metrics.
+Optimize your SQL Server performance with this collection of powerful monitoring queries. These T-SQL queries cover essential aspects like:
+
+Database information
+Server health
+Disk usage
+Backup history
+SQL job status
+Performance metrics
+This comprehensive overview empowers you to proactively identify and address potential issues, ensuring a smooth-running SQL Server environment.
 
 ## Table of Contents
 
