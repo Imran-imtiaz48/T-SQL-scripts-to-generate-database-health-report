@@ -7,7 +7,7 @@ This comprehensive resource provides an SQL script and a stored procedure design
 ## Contents
 
 1. **Health Check Script Using SQL Queries**
-   - This script includes multiple SQL queries to retrieve vital information about the SQL Server environment.
+   - This script include multiple SQL queries to retrieve vital information about the SQL Server environment.
    - Queries cover:
      - Database information (size, compatibility, recovery model)
      - Server and instance status (hostname, version, edition, clustering)
