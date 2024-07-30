@@ -1,4 +1,4 @@
-# SQL Server Health Check Script and Stored Procedures
+# SQL Server Health Script and Stored Procedures
 
 ## Overview
 
