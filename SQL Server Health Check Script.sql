@@ -1,4 +1,4 @@
--- Database Info
+-- Database Information
 SELECT 
     db.database_id,
     db.name AS DatabaseName,
