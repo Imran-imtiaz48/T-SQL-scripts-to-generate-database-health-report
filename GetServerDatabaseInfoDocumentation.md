@@ -1,4 +1,4 @@
-# SQL Server Monitoring and Optimization Queries
+# SQL Server Monitoring and Optimization Querie
 
 Optimize your SQL Server performance with this collection of powerful monitoring queries. These T-SQL queries cover essential aspects like:
 
