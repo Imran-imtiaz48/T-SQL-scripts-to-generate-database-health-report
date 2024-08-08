@@ -1,7 +1,7 @@
 CREATE PROCEDURE GetServerDatabaseInfo
 AS
 BEGIN
-    -- Step 1: Database Informations
+    -- Step 1: Database Information
     SELECT  
         a.database_id,
         a.name,
