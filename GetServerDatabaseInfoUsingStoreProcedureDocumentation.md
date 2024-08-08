@@ -1,6 +1,6 @@
 # GetServerDatabaseInfo Stored Procedure
 
-The `GetServerDatabaseInfo` stored procedure delivers detailed insights into your SQL Server instance and its databases. This procedure consolidates critical information, including database status, server status, disk usage, backup details, job statuses, and various performance metrics. It is an essential tool for database administrators to effectively monitor and optimize their SQL Server environments.
+This `GetServerDatabaseInfo` stored procedure delivers detailed insights into your SQL Server instance and its databases. This procedure consolidates critical information, including database status, server status, disk usage, backup details, job statuses, and various performance metrics. It is an essential tool for database administrators to effectively monitor and optimize their SQL Server environments.
 
 ## Table of Contents
 
