@@ -4,199 +4,120 @@ BEGIN
     -- Step 1: Database Information
     SELECT  
         a.database_id,
-        a.name,
-        a.create_date,
-        b.name AS owner_name,
-        a.user_access_desc,
-        a.state_desc,
-        a.compatibility_level,
-        a.recovery_model_desc,
-        SUM((c.size * 8) / 1024) AS DBSizeInMB
-    FROM sys.databases a 
+        a.name AS DatabaseName,
+        a.create_date AS CreationDate,
+        b.name AS OwnerName,
+        a.user_access_desc AS UserAccess,
+        a.state_desc AS State,
+        a.compatibility_level AS CompatibilityLevel,
+        a.recovery_model_desc AS RecoveryModel,
+        SUM(c.size * 8 / 1024) AS DBSizeInMB -- Convert to MB directly
+    FROM sys.databases a
     INNER JOIN sys.server_principals b ON a.owner_sid = b.sid 
     INNER JOIN sys.master_files c ON a.database_id = c.database_id
     WHERE a.database_id > 5
     GROUP BY 
+        a.database_id,
         a.name,
         a.create_date,
         b.name,
         a.user_access_desc,
-        a.compatibility_level,
         a.state_desc,
-        a.recovery_model_desc,
-        a.database_id;
+        a.compatibility_level,
+        a.recovery_model_desc;
 
     -- Step 2: Server and Instance Status
-    DECLARE 
-        @Hostname VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), @@SERVERNAME)),
-        @Version VARCHAR(MAX) = (SELECT CONVERT(VARCHAR(MAX), @@version)),
-        @Edition VARCHAR(50) = (SELECT CONVERT(VARCHAR(50), SERVERPROPERTY('edition'))),
-        @IsClusteredInstance VARCHAR(50) = 
-            (SELECT CASE SERVERPROPERTY('IsClustered') WHEN 1 THEN 'Clustered Instance' ELSE 'Non Clustered instance' END),
-        @IsInstanceinSingleUserMode VARCHAR(50) = 
-            (SELECT CASE SERVERPROPERTY('IsSingleUser') WHEN 1 THEN 'Single user' ELSE 'Multi user' END);
-
-    SELECT 
-        @Hostname AS Hostname,
-        @Version AS Version,
-        @Edition AS Edition,
-        @IsClusteredInstance AS IsClusteredInstance,
-        @IsInstanceinSingleUserMode AS IsInstanceinSingleUserMode;
+    SELECT
+        CONVERT(VARCHAR(50), @@SERVERNAME) AS Hostname,
+        CONVERT(VARCHAR(MAX), @@VERSION) AS Version,
+        CONVERT(VARCHAR(50), SERVERPROPERTY('edition')) AS Edition,
+        CASE SERVERPROPERTY('IsClustered') WHEN 1 THEN 'Clustered Instance' ELSE 'Non-Clustered Instance' END AS ClusteredInstance,
+        CASE SERVERPROPERTY('IsSingleUser') WHEN 1 THEN 'Single User' ELSE 'Multi User' END AS InstanceUserMode;
 
     -- Step 3: Disk Status
     SELECT DISTINCT 
         volumes.logical_volume_name AS LogicalName,
         volumes.volume_mount_point AS Drive,
-        CONVERT(INT, volumes.available_bytes / 1024 / 1024 / 1024) AS FreeSpace,
-        CONVERT(INT, volumes.total_bytes / 1024 / 1024 / 1024) AS TotalSpace,
-        CONVERT(INT, volumes.total_bytes / 1024 / 1024 / 1024) - CONVERT(INT, volumes.available_bytes / 1024 / 1024 / 1024) AS OccupiedSpace
+        CONVERT(INT, volumes.available_bytes / 1024 / 1024 / 1024) AS FreeSpaceGB,
+        CONVERT(INT, volumes.total_bytes / 1024 / 1024 / 1024) AS TotalSpaceGB,
+        CONVERT(INT, (volumes.total_bytes - volumes.available_bytes) / 1024 / 1024 / 1024) AS OccupiedSpaceGB
     FROM sys.master_files mf
     CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.FILE_ID) volumes;
 
     -- Step 4: Database Backup Information
-    CREATE TABLE #BackupInformation 
-    (
-        DatabaseName VARCHAR(200), 
-        BackupType VARCHAR(50), 
-        BackupStartDate DATETIME, 
-        BackupFinishDate DATETIME, 
-        Username VARCHAR(200), 
-        BackupSize NUMERIC(10, 2), 
-        BackupUser VARCHAR(250)
-    );
-
     WITH backup_information AS
     (
         SELECT
-            database_name,
-            backup_type = CASE type
-                WHEN 'D' THEN 'Full backup'
-                WHEN 'I' THEN 'Differential backup'
-                WHEN 'L' THEN 'Log backup'
-                ELSE 'Other or copy only backup'
-            END,
+            database_name AS DatabaseName,
+            CASE type
+                WHEN 'D' THEN 'Full'
+                WHEN 'I' THEN 'Differential'
+                WHEN 'L' THEN 'Log'
+                ELSE 'Other'
+            END AS BackupType,
             backup_start_date,
             backup_finish_date,
-            user_name,
-            server_name,
-            compressed_backup_size,
-            ROW_NUMBER() OVER (PARTITION BY database_name, type ORDER BY backup_finish_date DESC) AS rownum
+            user_name AS BackupUser,
+            server_name AS ServerName,
+            CONVERT(NUMERIC(10, 2), compressed_backup_size / 1024 / 1024) AS BackupSizeMB,
+            ROW_NUMBER() OVER (PARTITION BY database_name, type ORDER BY backup_finish_date DESC) AS RowNum
         FROM msdb.dbo.backupset
     )
-    INSERT INTO #BackupInformation
-    SELECT
-        database_name AS DatabaseName,
-        backup_type AS BackupType,
+    SELECT 
+        DatabaseName,
+        BackupType,
         backup_start_date AS BackupStartDate,
         backup_finish_date AS BackupFinishDate,
-        server_name AS ServerName,
-        CONVERT(VARCHAR, CONVERT(NUMERIC(10, 2), compressed_backup_size / 1024 / 1024)) AS BackupSizeInMB,
-        user_name AS BackupTakenBy
+        BackupSizeMB,
+        BackupUser
     FROM backup_information
-    WHERE rownum = 1
-    ORDER BY database_name;
-
-    SELECT * FROM #BackupInformation;
-    DROP TABLE #BackupInformation;
+    WHERE RowNum = 1
+    ORDER BY DatabaseName;
 
     -- Step 5: SQL Job Status
-    CREATE TABLE #JobInformation
+    WITH last_job_run AS
     (
-        Servername VARCHAR(100), 
-        Categoryname VARCHAR(100),
-        JobName VARCHAR(500),
-        OwnerID VARCHAR(250),
-        Enabled VARCHAR(5),
-        NextRunDate DATETIME, 
-        LastRunDate DATETIME, 
-        Status VARCHAR(50)
-    );
-
-    INSERT INTO #JobInformation 
-    (
-        Servername,
-        Categoryname,
-        JobName,
-        OwnerID,
-        Enabled,
-        NextRunDate,
-        LastRunDate,
-        Status
-    )
-    SELECT 
-        CONVERT(VARCHAR, SERVERPROPERTY('Servername')) AS ServerName,
-        categories.NAME AS CategoryName,
-        sqljobs.name AS JobName,
-        SUSER_SNAME(sqljobs.owner_sid) AS OwnerID,
-        CASE sqljobs.enabled WHEN 1 THEN 'Yes' ELSE 'No' END AS Enabled,
-        CASE job_schedule.next_run_date
-            WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
-            ELSE CONVERT(DATETIME, CONVERT(CHAR(8), job_schedule.next_run_date, 112) 
-            + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), job_schedule.next_run_time), 6), 5, 0, ':'), 3, 0, ':'))
-        END AS NextScheduledRunDate,
-        lastrunjobhistory.LastRunDate,
-        ISNULL(lastrunjobhistory.run_status_desc, 'Unknown') AS run_status_desc
-    FROM msdb.dbo.sysjobs AS sqljobs
-    LEFT JOIN msdb.dbo.sysjobschedules AS job_schedule ON sqljobs.job_id = job_schedule.job_id
-    LEFT JOIN msdb.dbo.sysschedules AS schedule ON job_schedule.schedule_id = schedule.schedule_id
-    INNER JOIN msdb.dbo.syscategories categories ON sqljobs.category_id = categories.category_id
-    LEFT OUTER JOIN 
-    (
-        SELECT Jobhistory.job_id
-        FROM msdb.dbo.sysjobhistory AS Jobhistory
-        WHERE Jobhistory.step_id = 0
-        GROUP BY Jobhistory.job_id
-    ) AS jobhistory ON jobhistory.job_id = sqljobs.job_id
-    LEFT OUTER JOIN
-    (
-        SELECT 
-            sysjobhist.job_id,
-            CASE sysjobhist.run_date
-                WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
-                ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
-                + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
-            END AS LastRunDate,
-            sysjobhist.run_status,
-            CASE sysjobhist.run_status
+        SELECT
+            job_id,
+            MAX(CONVERT(DATETIME, CONVERT(CHAR(8), run_date, 112) + ' ' + 
+                         STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), run_time), 6), 5, 0, ':'), 3, 0, ':'))) AS LastRunDate,
+            MAX(CASE run_status 
                 WHEN 0 THEN 'Failed'
                 WHEN 1 THEN 'Succeeded'
                 WHEN 2 THEN 'Retry'
                 WHEN 3 THEN 'Canceled'
                 WHEN 4 THEN 'In Progress'
-                ELSE 'Unknown'
-            END AS run_status_desc,
-            sysjobhist.retries_attempted,
-            sysjobhist.step_id,
-            sysjobhist.step_name,
-            sysjobhist.run_duration AS RunTimeInSeconds,
-            sysjobhist.message,
-            ROW_NUMBER() OVER (PARTITION BY sysjobhist.job_id ORDER BY CASE sysjobhist.run_date
-                WHEN 0 THEN CONVERT(DATETIME, '1900-01-01')
-                ELSE CONVERT(DATETIME, CONVERT(CHAR(8), sysjobhist.run_date, 112) 
-                + ' ' + STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR(8), sysjobhist.run_time), 6), 5, 0, ':'), 3, 0, ':'))
-            END DESC) AS RowOrder
-        FROM msdb.dbo.sysjobhistory AS sysjobhist
-        WHERE sysjobhist.step_id = 0  
-    ) AS lastrunjobhistory ON lastrunjobhistory.job_id = sqljobs.job_id  
-    AND lastrunjobhistory.RowOrder = 1;
+                ELSE 'Unknown' 
+            END) AS Status
+        FROM msdb.dbo.sysjobhistory
+        WHERE step_id = 0
+        GROUP BY job_id
+    )
+    SELECT
+        CONVERT(VARCHAR(100), SERVERPROPERTY('ServerName')) AS ServerName,
+        categories.name AS CategoryName,
+        sqljobs.name AS JobName,
+        SUSER_SNAME(sqljobs.owner_sid) AS Owner,
+        CASE sqljobs.enabled WHEN 1 THEN 'Yes' ELSE 'No' END AS Enabled,
+        last_job_run.LastRunDate,
+        last_job_run.Status
+    FROM msdb.dbo.sysjobs sqljobs
+    INNER JOIN msdb.dbo.syscategories categories ON sqljobs.category_id = categories.category_id
+    LEFT JOIN last_job_run ON sqljobs.job_id = last_job_run.job_id;
 
-    SELECT * FROM #JobInformation;
-    DROP TABLE #JobInformation;
-
-    -- Step 6: Additional Monitoring and Optimization
-    -- CPU and Memory Utilization
+    -- Step 6: CPU and Memory Utilization
     SELECT 
         record_id, 
         event_time, 
         SQLProcessUtilization, 
         SystemIdle, 
-        100 - SystemIdle - SQLProcessUtilization AS OtherProcessUtilization 
-    FROM sys.dm_os_ring_buffers 
-    WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' 
-    AND record_id = (SELECT MAX(record_id) FROM sys.dm_os_ring_buffers 
+        100 - SystemIdle - SQLProcessUtilization AS OtherProcessUtilization
+    FROM sys.dm_os_ring_buffers
+    WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR'
+    AND record_id = (SELECT MAX(record_id) FROM sys.dm_os_ring_buffers
                      WHERE ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR');
 
-    -- I/O Statistics
+    -- Step 7: I/O Statistics
     SELECT 
         db_name(database_id) AS DatabaseName,
         file_id,
@@ -204,68 +125,68 @@ BEGIN
         num_of_reads,
         io_stall_write_ms,
         num_of_writes,
-        io_stall_read_ms / num_of_reads AS avg_read_stall_ms,
-        io_stall_write_ms / num_of_writes AS avg_write_stall_ms
+        io_stall_read_ms / NULLIF(num_of_reads, 0) AS AvgReadStallMS,
+        io_stall_write_ms / NULLIF(num_of_writes, 0) AS AvgWriteStallMS
     FROM sys.dm_io_virtual_file_stats(null, null);
 
-    -- Wait Statistics
+    -- Step 8: Wait Statistics
     SELECT 
         wait_type, 
         waiting_tasks_count, 
         wait_time_ms, 
         max_wait_time_ms, 
-        signal_wait_time_ms 
-    FROM sys.dm_os_wait_stats 
+        signal_wait_time_ms
+    FROM sys.dm_os_wait_stats
     ORDER BY wait_time_ms DESC;
 
-    -- Error Logs
+    -- Step 9: Error Logs
     EXEC sp_readerrorlog;
 
-    -- Index Fragmentation
+    -- Step 10: Index Fragmentation
     SELECT 
-        dbschemas.[name] AS 'Schema', 
-        dbtables.[name] AS 'Table', 
-        dbindexes.[name] AS 'Index', 
-        indexstats.avg_fragmentation_in_percent 
-    FROM sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, 'LIMITED') AS indexstats 
-    INNER JOIN sys.tables dbtables ON indexstats.[object_id] = dbtables.[object_id] 
-    INNER JOIN sys.schemas dbschemas ON dbtables.[schema_id] = dbschemas.[schema_id] 
-    INNER JOIN sys.indexes AS dbindexes ON indexstats.[object_id] = dbindexes.[object_id] 
-    AND indexstats.index_id = dbindexes.index_id 
+        dbschemas.[name] AS SchemaName, 
+        dbtables.[name] AS TableName, 
+        dbindexes.[name] AS IndexName, 
+        indexstats.avg_fragmentation_in_percent AS Fragmentation
+    FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') indexstats
+    INNER JOIN sys.tables dbtables ON indexstats.[object_id] = dbtables.[object_id]
+    INNER JOIN sys.schemas dbschemas ON dbtables.[schema_id] = dbschemas.[schema_id]
+    INNER JOIN sys.indexes dbindexes ON indexstats.[object_id] = dbindexes.[object_id]
+    AND indexstats.index_id = dbindexes.index_id
     ORDER BY indexstats.avg_fragmentation_in_percent DESC;
 
-    -- Query Store Information
-    SELECT 
-        TOP 10 query_text, 
-        plan_id, 
-        execution_count, 
-        total_cpu_time_ms, 
-        total_duration_ms, 
-        total_logical_reads, 
-        total_logical_writes 
-    FROM sys.query_store_query_text AS qt 
-    JOIN sys.query_store_query AS q ON qt.query_text_id = q.query_text_id 
-    JOIN sys.query_store_plan AS p ON q.query_id = p.query_id 
-    ORDER BY total_cpu_time_ms DESC;
+    -- Step 11: Query Store Information
+    SELECT TOP 10 
+        qt.query_text AS QueryText,
+        p.plan_id,
+        q.execution_count,
+        p.total_cpu_time_ms,
+        p.total_duration_ms,
+        p.total_logical_reads,
+        p.total_logical_writes
+    FROM sys.query_store_query_text qt
+    JOIN sys.query_store_query q ON qt.query_text_id = q.query_text_id
+    JOIN sys.query_store_plan p ON q.query_id = p.query_id
+    ORDER BY p.total_cpu_time_ms DESC;
 
-    -- Blocking and Deadlocks
+    -- Step 12: Blocking and Deadlocks
     SELECT 
         blocking_session_id, 
         session_id, 
         wait_type, 
         wait_duration_ms, 
-        wait_resource 
-    FROM sys.dm_exec_requests 
+        wait_resource
+    FROM sys.dm_exec_requests
     WHERE blocking_session_id <> 0;
 
-    -- Security and Permission Audits
+    -- Step 13: Security and Permission Audits
     SELECT 
         pr.principal_id, 
-        pr.name AS principal_name, 
-        pr.type_desc AS principal_type_desc, 
-        pe.state_desc AS permission_state_desc, 
-        pe.permission_name 
-    FROM sys.database_principals AS pr 
-    JOIN sys.database_permissions AS pe ON pr.principal_id = pe.grantee_principal_id 
+        pr.name AS PrincipalName, 
+        pr.type_desc AS PrincipalType,
+        pe.state_desc AS PermissionState,
+        pe.permission_name AS Permission
+    FROM sys.database_principals pr
+    JOIN sys.database_permissions pe ON pr.principal_id = pe.grantee_principal_id
     ORDER BY pr.name;
 END;
