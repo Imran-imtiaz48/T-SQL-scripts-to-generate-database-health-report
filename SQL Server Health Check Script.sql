@@ -83,18 +83,20 @@ WITH backup_info AS (
         ROW_NUMBER() OVER (PARTITION BY database_name, type ORDER BY backup_finish_date DESC) AS RowNum
     FROM msdb.dbo.backupset
 )
-INSERT INTO #BackupInformation
+INSERT INTO #BackupInformation (DatabaseName, BackupType, BackupStartDate, BackupFinishDate, UserName, BackupSize, BackupUser)
 SELECT 
     database_name AS DatabaseName,
     BackupType,
     backup_start_date AS BackupStartDate,
     backup_finish_date AS BackupFinishDate,
-    user_name AS BackupUser,
-    CONVERT(VARCHAR, CONVERT(NUMERIC(10, 2), compressed_backup_size / 1024 / 1024)) AS BackupSizeMB
+    user_name AS UserName,  -- Adding missing column
+    CONVERT(NUMERIC(10, 2), compressed_backup_size / 1024 / 1024) AS BackupSize, -- Correcting type conversion
+    user_name AS BackupUser -- Assuming BackupUser and UserName are the same
 FROM backup_info
 WHERE RowNum = 1;
 
 SELECT * FROM #BackupInformation;
+
 
 -- Status of SQL Jobs
 CREATE TABLE #JobInformation (
