@@ -1,4 +1,4 @@
--- Retrieve detailed database information
+
 SELECT 
     a.database_id,
     a.name AS DatabaseName,
